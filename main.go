@@ -92,7 +92,7 @@ func GetCustomerGithubStars() map[string][]Repos {
 				}
 				r := Repos{
 					Name: v["full_name"].(string),
-					URI:  v["url"].(string),
+					URI:  v["html_url"].(string),
 				}
 				if _, ok := m[lang]; !ok {
 					m[lang] = []Repos{r}
