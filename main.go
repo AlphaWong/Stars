@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"sort"
@@ -17,6 +15,8 @@ const (
 	MarkdownHeader = "%s|⭐️|%s\n"
 	MarkdownColumn = "%s|%s|%s\n"
 	MarkdownStar   = "[ [%s](%s) ]"
+
+	GithubURI = "https://api.github.com/users/alphawong/starred?page="
 )
 
 type Repos struct {
@@ -69,18 +69,14 @@ func GetCustomerGithubStars() map[string][]Repos {
 
 	i := 0
 	for true {
-		response, err := http.Get("https://api.github.com/users/" + "alphawong" + "/starred?page=" + strconv.Itoa(i))
+		response, err := http.Get(GithubURI + strconv.Itoa(i))
 		if err != nil {
 			log.Fatalf("%s", err)
 		} else {
 			defer response.Body.Close()
 
-			contents, err := ioutil.ReadAll(response.Body)
-			if err != nil {
-				log.Fatalf("%s", err)
-			}
+			json.NewDecoder(response.Body).Decode(&t)
 
-			json.NewDecoder(bytes.NewReader(contents)).Decode(&t)
 			if len(t) == 0 {
 				return m
 			}
