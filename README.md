@@ -7,6 +7,7 @@ go run ./main.go > o.md
 ```
 
 # Result
+
 Language|⭐️|Repos
 ---|---|---
 ActionScript|1|[ [pakastin/open-source-flash](https://github.com/pakastin/open-source-flash) ]
