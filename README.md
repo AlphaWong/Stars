@@ -3,7 +3,7 @@ Do you remember what you star ?
 
 # Run 
 ```sh
-go run ./main.go > o.md
+GOMODULE=on go run ./main.go > o.md
 ```
 
 # Result
