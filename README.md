@@ -3,7 +3,12 @@ Do you remember what you star ?
 
 # Run 
 ```sh
-GOMODULE=on go run ./main.go > o.md
+TOKEN=<GITHUB_TOKEN> go run ./main.go > o.md
+```
+
+# GITHUB_TOKEN
+```
+see https://github.com/settings/tokens
 ```
 
 # Result

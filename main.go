@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,12 +20,22 @@ const (
 	GithubURI = "https://api.github.com/users/alphawong/starred?page="
 )
 
+var (
+	token  = os.Getenv("TOKEN")
+	client = &http.Client{}
+)
+
 type Repos struct {
 	URI  string `json:"uri"`
 	Name string `json:"name"`
 }
 
 func main() {
+	if len(token) == 0 {
+		// simple check for missing github token
+		fmt.Println("Missing Github token")
+		return
+	}
 	m := GetCustomerGithubStars()
 	PrintMarkdownHeader()
 	PrintMarkdownColumn()
@@ -69,7 +80,9 @@ func GetCustomerGithubStars() map[string][]Repos {
 
 	i := 0
 	for true {
-		response, err := http.Get(GithubURI + strconv.Itoa(i))
+		req, _ := http.NewRequest(http.MethodGet, GithubURI+strconv.Itoa(i), nil)
+		req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
+		response, err := client.Do(req)
 		if err != nil {
 			log.Fatalf("%s", err)
 		} else {
