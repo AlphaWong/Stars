@@ -152,7 +152,6 @@ func main() {
 	}
 	totalPageCount := GetUserStarredRepositoriesTotalPage()
 	starredRepositories := GetUserAllStarredRepositories(totalPageCount)
-	// m := GetCustomerGithubStars()
 	PrintMarkdownHeader()
 	PrintMarkdownColumn()
 	repos := GroupByProgrammingLanguage(starredRepositories)
