@@ -11,6 +11,10 @@ TOKEN=<GITHUB_TOKEN> go run ./main.go > o.md
 see https://github.com/settings/tokens
 ```
 
+# Github doc
+```
+https://docs.github.com/en/free-pro-team@latest/rest/reference/activity#list-repositories-starred-by-a-user
+```
 # Result
 Language|⭐️|Repos
 ---|---|---
