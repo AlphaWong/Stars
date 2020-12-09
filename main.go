@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -135,20 +138,28 @@ type UserStarredRepositories []struct {
 	} `json:"permissions"`
 }
 
+type MarkDownRepo struct {
+	FullName string
+	HtmlUrl  string
+	Language string
+}
+
 func main() {
 	if len(token) == 0 {
 		// check for missing github token
 		fmt.Println("Missing Github token")
 		return
 	}
-	fmt.Printf("%v", GetUserAllStarredRepositoriesTotalPage())
+	totalPageCount := GetUserStarredRepositoriesTotalPage()
+	starredRepositories := GetUserAllStarredRepositories(totalPageCount)
 	// m := GetCustomerGithubStars()
-	// PrintMarkdownHeader()
-	// PrintMarkdownColumn()
-	// PrintAsMarkdown(m)
+	PrintMarkdownHeader()
+	PrintMarkdownColumn()
+	repos := GroupByProgrammingLanguage(starredRepositories)
+	PrintAsMarkdown(repos)
 }
 
-func GetUserAllStarredRepositoriesTotalPage() (totalPage int) {
+func GetUserStarredRepositoriesTotalPage() (totalPage int) {
 	rawURI := fmt.Sprintf(GithubURI, GitHubUserName)
 	u, err := url.Parse(rawURI)
 	if err != nil {
@@ -169,10 +180,52 @@ func GetUserAllStarredRepositoriesTotalPage() (totalPage int) {
 	linkHeader := resp.Header.Get("link")
 	totalPage = ParseRawLinkHeader(linkHeader)
 	return
-	// defer resp.Body.Close()
-	// var userStarredRepositories UserStarredRepositories
-	// json.NewDecoder(resp.Body).Decode(&userStarredRepositories)
-	// return userStarredRepositories
+}
+
+func GetUserAllStarredRepositories(totalPage int) (userStarredRepositories UserStarredRepositories) {
+	rawURI := fmt.Sprintf(GithubURI, GitHubUserName)
+	u, err := url.Parse(rawURI)
+	if err != nil {
+		log.Print(err.Error())
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*1)
+	defer cancel()
+	ch := make(chan UserStarredRepositories, totalPage)
+	for i := 1; i <= totalPage; i++ {
+		go func(pageNum int) {
+			query := url.Values{
+				"per_page": []string{"100"},
+				"page":     []string{strconv.Itoa(pageNum)},
+			}
+			u.RawQuery = query.Encode()
+			req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
+			req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
+			req.Header.Set("Accept", "application/vnd.github.v3+json")
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Fatalf("%s", err)
+			}
+			defer resp.Body.Close()
+			var singleUserStarredRepositoriesResponse UserStarredRepositories
+			json.NewDecoder(resp.Body).Decode(&singleUserStarredRepositoriesResponse)
+			ch <- singleUserStarredRepositoriesResponse
+		}(i)
+	}
+	var taskProgress = 0
+task:
+	for true {
+		select {
+		case repositories := <-ch:
+			userStarredRepositories = append(userStarredRepositories, repositories...)
+			taskProgress = taskProgress + 1
+			if taskProgress == totalPage {
+				break task
+			}
+		case <-ctx.Done():
+			break task
+		}
+	}
+	return userStarredRepositories
 }
 
 func ParseRawLinkHeader(rawHeader string) (totalPage int) {
@@ -192,75 +245,54 @@ func ParseRawLinkHeader(rawHeader string) (totalPage int) {
 	return
 }
 
-// func PrintMarkdownHeader() {
-// 	fmt.Printf(MarkdownHeader, "Language", "Repos")
-// }
+func PrintMarkdownHeader() {
+	fmt.Printf(MarkdownHeader, "Language", "Repos")
+}
 
-// func PrintMarkdownColumn() {
-// 	fmt.Printf(MarkdownColumn, "---", "---", "---")
-// }
+func PrintMarkdownColumn() {
+	fmt.Printf(MarkdownColumn, "---", "---", "---")
+}
 
-// func PrintAsMarkdown(m map[string][]Repos) {
-// 	sk := SortMapByKeyAlphabatAsc(m)
-// 	sort.Strings(sk)
-// 	for _, v := range sk {
-// 		fmt.Printf(MarkdownColumn, v, strconv.Itoa(len(m[v])), GetInnerReposStr(m[v]))
-// 	}
-// }
+func GroupByProgrammingLanguage(userStarredRepositories UserStarredRepositories) map[string][]MarkDownRepo {
+	var repos = make(map[string][]MarkDownRepo)
+	for _, v := range userStarredRepositories {
+		var languageKey = v.Language
+		if v.Language == "" {
+			// handle pure document repo
+			languageKey = "other"
+		}
+		repos[languageKey] = append(
+			repos[languageKey],
+			MarkDownRepo{
+				FullName: v.FullName,
+				HtmlUrl:  v.HTMLURL,
+				Language: v.Language,
+			},
+		)
 
-// func SortMapByKeyAlphabatAsc(m map[string][]Repos) (s []string) {
-// 	for k, _ := range m {
-// 		s = append(s, k)
-// 	}
-// 	return
-// }
+	}
+	return repos
+}
 
-// func GetInnerReposStr(r []Repos) (s string) {
-// 	var ss []string
-// 	for _, v := range r {
-// 		ss = append(ss, fmt.Sprintf(MarkdownStar, v.Name, v.URI))
-// 	}
-// 	return strings.Join(ss[:], ", ")
-// }
+func GetMapKeyASC(m map[string][]MarkDownRepo) (s []string) {
+	for k := range m {
+		s = append(s, k)
+	}
+	sort.Strings(s)
+	return
+}
 
-// func GetCustomerGithubStars() map[string][]Repos {
-// 	m := make(map[string][]Repos)
+func PrintAsMarkdown(repos map[string][]MarkDownRepo) {
+	keys := GetMapKeyASC(repos)
+	for _, v := range keys {
+		fmt.Printf(MarkdownColumn, v, strconv.Itoa(len(repos[v])), GetInnerReposStr(repos[v]))
+	}
+}
 
-// 	var t []map[string]interface{}
-
-// 	i := 0
-// 	for true {
-// 		req, _ := http.NewRequest(http.MethodGet, GithubURI+strconv.Itoa(i), nil)
-// 		req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
-// 		response, err := client.Do(req)
-// 		if err != nil {
-// 			log.Fatalf("%s", err)
-// 		} else {
-// 			defer response.Body.Close()
-
-// 			json.NewDecoder(response.Body).Decode(&t)
-
-// 			if len(t) == 0 {
-// 				return m
-// 			}
-
-// 			for _, v := range t {
-// 				lang := Others
-// 				if nil != v["language"] {
-// 					lang = v["language"].(string)
-// 				}
-// 				r := Repos{
-// 					Name: v["full_name"].(string),
-// 					URI:  v["html_url"].(string),
-// 				}
-// 				if _, ok := m[lang]; !ok {
-// 					m[lang] = []Repos{r}
-// 				} else {
-// 					m[lang] = append(m[lang], r)
-// 				}
-// 			}
-// 		}
-// 		i++
-// 	}
-// 	return m
-// }
+func GetInnerReposStr(markDownRepo []MarkDownRepo) (s string) {
+	var repos []string
+	for _, v := range markDownRepo {
+		repos = append(repos, fmt.Sprintf(MarkdownStar, v.FullName, v.HtmlUrl))
+	}
+	return strings.Join(repos[:], ", ")
+}
