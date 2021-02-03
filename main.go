@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -12,14 +13,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 )
 
 const (
-	Others         = "Others"
-	MarkdownHeader = "%s|⭐️|%s\n"
-	MarkdownColumn = "%s|%s|%s\n"
-	MarkdownStar   = "[ [%s](%s) ]"
+	Others       = "Others"
+	MarkdownStar = "[ [%s](%s) ]"
 
 	GitHubUserName = "alphawong"
 	// GithubURI store the base uri
@@ -144,6 +144,12 @@ type MarkDownRepo struct {
 	Language string
 }
 
+type MarkDownRow struct {
+	Language string
+	Stars    string
+	Items    string
+}
+
 func main() {
 	if len(token) == 0 {
 		// check for missing github token
@@ -152,10 +158,35 @@ func main() {
 	}
 	totalPageCount := GetUserStarredRepositoriesTotalPage()
 	starredRepositories := GetUserAllStarredRepositories(totalPageCount)
-	PrintMarkdownHeader()
-	PrintMarkdownColumn()
 	repos := GroupByProgrammingLanguage(starredRepositories)
-	PrintAsMarkdown(repos)
+	slices := Covert2Slice(repos)
+	Print2File(slices)
+}
+
+func Print2File(markDownRows []MarkDownRow) error {
+	os.Remove("./out.md")
+	f, _ := os.Create("./out.md")
+	defer f.Close()
+	return Print2Template(f, markDownRows)
+}
+
+func Print2Template(wr io.Writer, markDownRows []MarkDownRow) error {
+	tpl := template.Must(template.ParseFiles("./template/starred.md"))
+	return tpl.ExecuteTemplate(wr, "layout", markDownRows)
+}
+
+func Covert2Slice(repos map[string][]MarkDownRepo) []MarkDownRow {
+	keys := GetMapKeyASC(repos)
+	var rows = make([]MarkDownRow, 0, len(keys))
+	for _, v := range keys {
+		row := MarkDownRow{
+			Language: v,
+			Stars:    strconv.Itoa(len(repos[v])),
+			Items:    GetInnerReposStr(repos[v]),
+		}
+		rows = append(rows, row)
+	}
+	return rows
 }
 
 func GetUserStarredRepositoriesTotalPage() (totalPage int) {
@@ -244,14 +275,6 @@ func ParseRawLinkHeader(rawHeader string) (totalPage int) {
 	return
 }
 
-func PrintMarkdownHeader() {
-	fmt.Printf(MarkdownHeader, "Language", "Repos")
-}
-
-func PrintMarkdownColumn() {
-	fmt.Printf(MarkdownColumn, "---", "---", "---")
-}
-
 func GroupByProgrammingLanguage(userStarredRepositories UserStarredRepositories) map[string][]MarkDownRepo {
 	var repos = make(map[string][]MarkDownRepo)
 	for _, v := range userStarredRepositories {
@@ -279,13 +302,6 @@ func GetMapKeyASC(m map[string][]MarkDownRepo) (s []string) {
 	}
 	sort.Strings(s)
 	return
-}
-
-func PrintAsMarkdown(repos map[string][]MarkDownRepo) {
-	keys := GetMapKeyASC(repos)
-	for _, v := range keys {
-		fmt.Printf(MarkdownColumn, v, strconv.Itoa(len(repos[v])), GetInnerReposStr(repos[v]))
-	}
 }
 
 func GetInnerReposStr(markDownRepo []MarkDownRepo) (s string) {

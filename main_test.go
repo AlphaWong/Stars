@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
@@ -92,4 +93,104 @@ func TestGetUserAllStarredRepositories(t *testing.T) {
 	json.Unmarshal(b, &expected)
 	require.Contains(expected, actual[0])
 	require.Contains(expected, actual[1])
+}
+
+func TestGroupByProgrammingLanguage(t *testing.T) {
+	require := require.New(t)
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+	token = "TOKEN"
+	httpmock.RegisterResponder(
+		http.MethodGet,
+		"https://api.github.com/users/alphawong/starred?page=1&per_page=100",
+		httpmock.NewJsonResponderOrPanic(
+			http.StatusOK,
+			httpmock.File("./mock_data/page_1.json"),
+		),
+	)
+	httpmock.RegisterResponder(
+		http.MethodGet,
+		"https://api.github.com/users/alphawong/starred?page=2&per_page=100",
+		httpmock.NewJsonResponderOrPanic(
+			http.StatusOK,
+			httpmock.File("./mock_data/page_2.json"),
+		),
+	)
+	repos := GetUserAllStarredRepositories(2)
+	grouped := GroupByProgrammingLanguage(repos)
+	require.Contains(grouped["Go"], MarkDownRepo{
+		FullName: "victorspringer/http-cache",
+		HtmlUrl:  "https://github.com/victorspringer/http-cache",
+		Language: "Go",
+	})
+	require.Contains(grouped["JavaScript"], MarkDownRepo{
+		FullName: "stefanwuthrich/cached-google-places",
+		HtmlUrl:  "https://github.com/stefanwuthrich/cached-google-places",
+		Language: "JavaScript",
+	})
+}
+
+func TestCovert2Slice(t *testing.T) {
+	require := require.New(t)
+	input := map[string][]MarkDownRepo{
+		"Go": {
+			{
+				FullName: "victorspringer/http-cache",
+				HtmlUrl:  "https://github.com/victorspringer/http-cache",
+				Language: "Go",
+			},
+		},
+		"JavaScript": {
+			{
+				FullName: "stefanwuthrich/cached-google-places",
+				HtmlUrl:  "https://github.com/stefanwuthrich/cached-google-places",
+				Language: "JavaScript",
+			}, {
+				FullName: "z",
+				HtmlUrl:  "zxy",
+				Language: "JavaScript",
+			},
+		},
+	}
+	slice := Covert2Slice(input)
+	require.Contains(slice,
+		MarkDownRow{
+			Language: "Go",
+			Stars:    "1",
+			Items:    "[ [victorspringer/http-cache](https://github.com/victorspringer/http-cache) ]",
+		},
+	)
+	require.Contains(slice,
+		MarkDownRow{
+			Language: "JavaScript",
+			Stars:    "2",
+			Items:    "[ [stefanwuthrich/cached-google-places](https://github.com/stefanwuthrich/cached-google-places) ], [ [z](zxy) ]",
+		},
+	)
+}
+
+func TestPrint2Template(t *testing.T) {
+	require := require.New(t)
+	input := []MarkDownRow{
+		{
+			Language: "Go",
+			Stars:    "1",
+			Items:    "[ [victorspringer/http-cache](https://github.com/victorspringer/http-cache) ]",
+		},
+		MarkDownRow{
+			Language: "JavaScript",
+			Stars:    "2",
+			Items:    "[ [stefanwuthrich/cached-google-places](https://github.com/stefanwuthrich/cached-google-places) ], [ [z](zxy) ]",
+		},
+	}
+	var str strings.Builder
+	err := Print2Template(&str, input)
+	require.NoError(err)
+	expected, err := ioutil.ReadFile("./mock_data/sample_out.md")
+	require.NoError(err)
+
+	require.Equal(
+		string(expected),
+		str.String(),
+	)
 }
