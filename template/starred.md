@@ -1,4 +1,5 @@
-{{define "layout"}}# Stars
+{{define "layout"}}![test](https://github.com/AlphaWong/Stars/workflows/test/badge.svg)
+# Stars
 Do you remember what you star ?
 
 # update
