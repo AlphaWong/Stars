@@ -1,4 +1,4 @@
-{{define "layout"}}![test](https://github.com/AlphaWong/Stars/workflows/test/badge.svg)
+{{define "layout"}}![test](https://github.com/AlphaWong/Stars/workflows/test/badge.svg)[![codecov](https://codecov.io/gh/AlphaWong/Stars/branch/master/graph/badge.svg?token=xuILexY8TD)](https://codecov.io/gh/AlphaWong/Stars)
 # Stars
 Do you remember what you star ?
 
