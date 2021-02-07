@@ -19,4 +19,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Test
-        run: make cover
+        run: make codecov
+      - name: Upload to codecov
+        uses: codecov/codecov-action@v1
+        with:
+          file: ./count.out
