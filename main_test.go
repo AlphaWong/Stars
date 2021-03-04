@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/require"
@@ -183,14 +184,27 @@ func TestPrint2Template(t *testing.T) {
 			Items:    "[ [stefanwuthrich/cached-google-places](https://github.com/stefanwuthrich/cached-google-places) ], [ [z](zxy) ]",
 		},
 	}
-	var str strings.Builder
-	err := Print2Template(&str, input)
+	var output strings.Builder
+	tpl := template.Must(
+		template.New("layout").
+			Parse(`# Result
+Language|⭐️|Repos
+---|---|---
+{{ range . }}{{.Language}}|{{.Stars}}|{{.Items}}
+{{end}}`,
+			))
+	err := Print2Template(&output, tpl, input)
 	require.NoError(err)
-	expected, err := ioutil.ReadFile("./mock_data/sample_out.md")
+	expected := `# Result
+Language|⭐️|Repos
+---|---|---
+Go|1|[ [victorspringer/http-cache](https://github.com/victorspringer/http-cache) ]
+JavaScript|2|[ [stefanwuthrich/cached-google-places](https://github.com/stefanwuthrich/cached-google-places) ], [ [z](zxy) ]
+`
 	require.NoError(err)
 
 	require.Equal(
-		string(expected),
-		str.String(),
+		expected,
+		output.String(),
 	)
 }

@@ -165,13 +165,17 @@ func main() {
 
 func Print2File(markDownRows []MarkDownRow) error {
 	os.Remove("./out.md")
-	f, _ := os.Create("./out.md")
-	defer f.Close()
-	return Print2Template(f, markDownRows)
+	output, _ := os.Create("./out.md")
+	defer output.Close()
+	tpl := template.Must(template.ParseFiles("./template/starred.md"))
+	return Print2Template(output, tpl, markDownRows)
 }
 
-func Print2Template(wr io.Writer, markDownRows []MarkDownRow) error {
-	tpl := template.Must(template.ParseFiles("./template/starred.md"))
+func Print2Template(
+	wr io.Writer,
+	tpl *template.Template,
+	markDownRows []MarkDownRow,
+) error {
 	return tpl.ExecuteTemplate(wr, "layout", markDownRows)
 }
 
