@@ -4,17 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/AlphaWong/Stars/services"
 )
 
 const (
@@ -144,12 +146,6 @@ type MarkDownRepo struct {
 	Language string
 }
 
-type MarkDownRow struct {
-	Language string
-	Stars    string
-	Items    string
-}
-
 func main() {
 	if len(token) == 0 {
 		// check for missing github token
@@ -160,30 +156,26 @@ func main() {
 	starredRepositories := GetUserAllStarredRepositories(totalPageCount)
 	repos := GroupByProgrammingLanguage(starredRepositories)
 	slices := Covert2Slice(repos)
-	Print2File(slices)
+
+	baseTemplatePath, _ := filepath.Abs("./template/starred.md")
+	outputPath, _ := filepath.Abs("./out.md")
+	printer, err := services.NewTplPrinter(
+		services.WithBaseTemplate(template.ParseFiles(baseTemplatePath)),
+		services.WithOutputPath(outputPath),
+	)
+	if nil != err {
+		fmt.Print(err.Error())
+		return
+	}
+
+	printer.PrintSlice(slices)
 }
 
-func Print2File(markDownRows []MarkDownRow) error {
-	os.Remove("./out.md")
-	output, _ := os.Create("./out.md")
-	defer output.Close()
-	tpl := template.Must(template.ParseFiles("./template/starred.md"))
-	return Print2Template(output, tpl, markDownRows)
-}
-
-func Print2Template(
-	wr io.Writer,
-	tpl *template.Template,
-	markDownRows []MarkDownRow,
-) error {
-	return tpl.ExecuteTemplate(wr, "layout", markDownRows)
-}
-
-func Covert2Slice(repos map[string][]MarkDownRepo) []MarkDownRow {
+func Covert2Slice(repos map[string][]MarkDownRepo) []services.MarkDownRow {
 	keys := GetMapKeyASC(repos)
-	var rows = make([]MarkDownRow, 0, len(keys))
+	var rows = make([]services.MarkDownRow, 0, len(keys))
 	for _, v := range keys {
-		row := MarkDownRow{
+		row := services.MarkDownRow{
 			Language: v,
 			Stars:    strconv.Itoa(len(repos[v])),
 			Items:    GetInnerReposStr(repos[v]),

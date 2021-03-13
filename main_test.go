@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"testing"
-	"text/template"
 
+	"github.com/AlphaWong/Stars/services"
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/require"
 )
@@ -155,56 +154,17 @@ func TestCovert2Slice(t *testing.T) {
 	}
 	slice := Covert2Slice(input)
 	require.Contains(slice,
-		MarkDownRow{
+		services.MarkDownRow{
 			Language: "Go",
 			Stars:    "1",
 			Items:    "[ [victorspringer/http-cache](https://github.com/victorspringer/http-cache) ]",
 		},
 	)
 	require.Contains(slice,
-		MarkDownRow{
+		services.MarkDownRow{
 			Language: "JavaScript",
 			Stars:    "2",
 			Items:    "[ [stefanwuthrich/cached-google-places](https://github.com/stefanwuthrich/cached-google-places) ], [ [z](zxy) ]",
 		},
-	)
-}
-
-func TestPrint2Template(t *testing.T) {
-	require := require.New(t)
-	input := []MarkDownRow{
-		{
-			Language: "Go",
-			Stars:    "1",
-			Items:    "[ [victorspringer/http-cache](https://github.com/victorspringer/http-cache) ]",
-		},
-		MarkDownRow{
-			Language: "JavaScript",
-			Stars:    "2",
-			Items:    "[ [stefanwuthrich/cached-google-places](https://github.com/stefanwuthrich/cached-google-places) ], [ [z](zxy) ]",
-		},
-	}
-	var output strings.Builder
-	tpl := template.Must(
-		template.New("layout").
-			Parse(`# Result
-Language|⭐️|Repos
----|---|---
-{{ range . }}{{.Language}}|{{.Stars}}|{{.Items}}
-{{end}}`,
-			))
-	err := Print2Template(&output, tpl, input)
-	require.NoError(err)
-	expected := `# Result
-Language|⭐️|Repos
----|---|---
-Go|1|[ [victorspringer/http-cache](https://github.com/victorspringer/http-cache) ]
-JavaScript|2|[ [stefanwuthrich/cached-google-places](https://github.com/stefanwuthrich/cached-google-places) ], [ [z](zxy) ]
-`
-	require.NoError(err)
-
-	require.Equal(
-		expected,
-		output.String(),
 	)
 }
