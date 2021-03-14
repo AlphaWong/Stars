@@ -1,6 +1,6 @@
 test:
-		go test -cover ./...
+		go test -count 1 -cover ./...
 cover:
-		go test ./... -covermode=count -coverprofile=count.out && go tool cover -func=count.out && rm ./count.out
+		go test -count 1 ./... -covermode=count -coverprofile=count.out && go tool cover -func=count.out && rm ./count.out
 codecov:
-		go test ./... -covermode=count -coverprofile=count.out && go tool cover -func=count.out
+		go test -count 1 ./... -covermode=count -coverprofile=count.out && go tool cover -func=count.out

@@ -19,7 +19,7 @@ type Printer interface {
 // ensure interface implement is correct
 var _ Printer = (*TplPrinter)(nil)
 
-type TplPrinterOption func(tplPrinter *TplPrinter)
+type TplPrinterOption func(*TplPrinter)
 
 func WithBaseTemplate(t *template.Template, err error) TplPrinterOption {
 	return func(tplPrinter *TplPrinter) {
