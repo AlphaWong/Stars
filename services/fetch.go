@@ -18,7 +18,7 @@ import (
 const (
 	GithubURI = "https://api.github.com/users/%s/starred"
 
-	Others       = "others"
+	Others       = "Others"
 	MarkdownStar = "[ [%s](%s) ]"
 )
 
@@ -116,10 +116,12 @@ func ParseRawLinkHeader(rawHeader string) (totalPage int) {
 	lastPageURI, err := url.Parse(lastPageRawURI)
 	if err != nil {
 		log.Println(err.Error())
+		return
 	}
 	totalPage, err = strconv.Atoi(lastPageURI.Query().Get("page"))
 	if err != nil {
 		log.Println(err.Error())
+		return
 	}
 	return
 }

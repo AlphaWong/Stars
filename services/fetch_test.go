@@ -3,13 +3,34 @@ package services
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNewGitHubFetcherFailWithMissingToken(t *testing.T) {
+	require := require.New(t)
+	fetcher, err := NewGitHubFetcher(
+		WithUserName("alphawong"),
+	)
+	require.Error(err, ErrorGithubToken)
+	require.Nil(fetcher)
+}
+
+func TestNewGitHubFetcherFailWithMissingUserName(t *testing.T) {
+	require := require.New(t)
+	fetcher, err := NewGitHubFetcher(
+		WithToken("TOKEN"),
+	)
+	require.Error(err, ErrorUserName)
+	require.Nil(fetcher)
+}
 
 func TestGetMapKeyASC(t *testing.T) {
 	require := require.New(t)
@@ -55,6 +76,40 @@ func TestParseRawLinkHeader(t *testing.T) {
 	rawHeader := `<https://api.github.com/user/5622516/starred?page=2>; rel="next", <https://api.github.com/user/5622516/starred?page=63>; rel="last"`
 	actual := ParseRawLinkHeader(rawHeader)
 	require.Equal(63, actual)
+}
+
+func TestParseRawLinkHeaderFailWithInvalidLastPageHeader(t *testing.T) {
+	require := require.New(t)
+	rawHeader := `<https://api.github.com/user/5622516/starred?page=2>; rel="next", <::!2312:#>; rel="last"`
+	var s strings.Builder
+	log.SetOutput(&s)
+	actual := ParseRawLinkHeader(rawHeader)
+	require.True(strings.Contains(s.String(), "missing protocol scheme"))
+	defer func() {
+		log.SetOutput(os.Stdout)
+	}()
+	require.Equal(0, actual)
+}
+
+func TestParseRawLinkHeaderFailWithInvalidLastPageNumberHeader(t *testing.T) {
+	require := require.New(t)
+	rawHeader := `<https://api.github.com/user/5622516/starred?page=2>; rel="next", <https://api.github.com/user/5622516/starred?page=a>; rel="last"`
+	var s strings.Builder
+	log.SetOutput(&s)
+	actual := ParseRawLinkHeader(rawHeader)
+	require.True(strings.Contains(s.String(), "invalid syntax"))
+	defer func() {
+		log.SetOutput(os.Stdout)
+	}()
+	require.Equal(0, actual)
+}
+
+func TestParseRawLinkHeaderFailWithInvalidHeader(t *testing.T) {
+	require := require.New(t)
+	rawHeader := ``
+	require.Panics(func() {
+		ParseRawLinkHeader(rawHeader)
+	}, "it should panic if InvalidHeader go to ParseRawLinkHeader")
 }
 
 func TestGetUserAllStarredRepositories(t *testing.T) {
@@ -114,6 +169,8 @@ func TestGroupByProgrammingLanguage(t *testing.T) {
 	require.NoError(err)
 	response2Path, err := filepath.Abs("../mock_data/page_2.json")
 	require.NoError(err)
+	response3Path, err := filepath.Abs("../mock_data/page_3.json")
+	require.NoError(err)
 	httpmock.RegisterResponder(
 		http.MethodGet,
 		"https://api.github.com/users/alphawong/starred?page=1&per_page=100",
@@ -130,7 +187,15 @@ func TestGroupByProgrammingLanguage(t *testing.T) {
 			httpmock.File(response2Path),
 		),
 	)
-	repos := fetcher.GetUserAllStarredRepositories(2)
+	httpmock.RegisterResponder(
+		http.MethodGet,
+		"https://api.github.com/users/alphawong/starred?page=3&per_page=100",
+		httpmock.NewJsonResponderOrPanic(
+			http.StatusOK,
+			httpmock.File(response3Path),
+		),
+	)
+	repos := fetcher.GetUserAllStarredRepositories(3)
 	grouped := GroupByProgrammingLanguage(repos)
 	require.Contains(grouped["Go"], MarkDownRepo{
 		FullName: "victorspringer/http-cache",
@@ -141,6 +206,11 @@ func TestGroupByProgrammingLanguage(t *testing.T) {
 		FullName: "stefanwuthrich/cached-google-places",
 		HtmlUrl:  "https://github.com/stefanwuthrich/cached-google-places",
 		Language: "JavaScript",
+	})
+	require.Contains(grouped[Others], MarkDownRepo{
+		FullName: "victorspringer/http-cache",
+		HtmlUrl:  "https://github.com/victorspringer/http-cache",
+		Language: "",
 	})
 }
 
