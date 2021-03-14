@@ -126,23 +126,32 @@ func ParseRawLinkHeader(rawHeader string) (totalPage int) {
 	return
 }
 
-func (self *GitHubFetcher) GetUserAllStarredRepositories(totalPage int) (userStarredRepositories UserStarredRepositories) {
-	rawURI := fmt.Sprintf(GithubURI, self.UserName)
+func GetURI(baseURI string, userName string, query url.Values) (string, error) {
+	rawURI := fmt.Sprintf(baseURI, userName)
 	u, err := url.Parse(rawURI)
 	if err != nil {
-		log.Print(err.Error())
+		return "", err
 	}
+	u.RawQuery = query.Encode()
+	return u.String(), nil
+}
+
+func (self *GitHubFetcher) GetUserAllStarredRepositories(totalPage int) (userStarredRepositories UserStarredRepositories) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*1)
 	defer cancel()
 	ch := make(chan UserStarredRepositories, totalPage)
 	for i := 1; i <= totalPage; i++ {
 		go func(pageNum int) {
+			// put the uri construction here to avoid data race
 			query := url.Values{
 				"per_page": []string{"100"},
 				"page":     []string{strconv.Itoa(pageNum)},
 			}
-			u.RawQuery = query.Encode()
-			req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
+			uri, err := GetURI(GithubURI, self.UserName, query)
+			if err != nil {
+				log.Print(err.Error())
+			}
+			req, _ := http.NewRequest(http.MethodGet, uri, nil)
 			req.Header.Set("Authorization", fmt.Sprintf("token %s", self.Token))
 			req.Header.Set("Accept", "application/vnd.github.v3+json")
 			resp, err := self.H.Do(req)

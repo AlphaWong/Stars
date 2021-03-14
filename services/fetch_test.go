@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -251,4 +252,29 @@ func TestCovert2Slice(t *testing.T) {
 			Items:    "[ [stefanwuthrich/cached-google-places](https://github.com/stefanwuthrich/cached-google-places) ], [ [z](zxy) ]",
 		},
 	)
+}
+
+func TestGetURI(t *testing.T) {
+	require := require.New(t)
+	query := url.Values{
+		"per_page": []string{"100"},
+		"page":     []string{"1"},
+	}
+	actual, err := GetURI(GithubURI, "alphawong", query)
+	require.NoError(err)
+	require.Equal(
+		"https://api.github.com/users/alphawong/starred?page=1&per_page=100",
+		actual,
+	)
+}
+
+func TestGetURIWithInvalidBaseURI(t *testing.T) {
+	require := require.New(t)
+	query := url.Values{
+		"per_page": []string{"100"},
+		"page":     []string{"1"},
+	}
+	actual, err := GetURI("::!2312:#", "alphawong", query)
+	require.Error(err, "missing protocol scheme")
+	require.Equal("", actual)
 }
