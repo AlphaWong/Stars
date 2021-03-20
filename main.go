@@ -46,6 +46,12 @@ func boot() (config *BaseConfig) {
 		BaseTemplate: "./template/starred.md",
 		OutputPath:   "./out.md",
 	}
+	// ensure the config is valid
+	validConfig(config)
+	return
+}
+
+func validConfig(config *BaseConfig) {
 	validate = validator.New()
 	err := validate.Struct(config)
 	if nil != err {
@@ -64,7 +70,6 @@ func boot() (config *BaseConfig) {
 		}
 		panic("Invalid config struct")
 	}
-	return
 }
 
 func run(config *BaseConfig) {

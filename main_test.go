@@ -23,6 +23,15 @@ func TestBoot(t *testing.T) {
 	require.NotNil(config)
 }
 
+func TestValidConfigWithMissingToken(t *testing.T) {
+	require := require.New(t)
+	require.Panics(func() {
+		config := boot()
+		config.Token = ""
+		validConfig(config)
+	})
+}
+
 func TestRun(t *testing.T) {
 	require := require.New(t)
 	httpmock.Activate()
