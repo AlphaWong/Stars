@@ -159,8 +159,12 @@ func (self *GitHubFetcher) GetUserAllStarredRepositories(totalPage int) (userSta
 				log.Fatalf("%s", err)
 			}
 			defer resp.Body.Close()
+
 			var singleUserStarredRepositoriesResponse UserStarredRepositories
-			json.NewDecoder(resp.Body).Decode(&singleUserStarredRepositoriesResponse)
+			err = json.NewDecoder(resp.Body).Decode(&singleUserStarredRepositoriesResponse)
+			if err != nil {
+				log.Fatalf("%s", err)
+			}
 			ch <- singleUserStarredRepositoriesResponse
 		}(i)
 	}
