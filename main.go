@@ -14,15 +14,6 @@ import (
 
 var validate *validator.Validate
 
-const (
-	Others       = "Others"
-	MarkdownStar = "[ [%s](%s) ]"
-
-	// GithubURI store the base uri
-	// "https://api.github.com/users/alphawong/starred"
-	GithubURI = "https://api.github.com/users/%s/starred"
-)
-
 type BaseConfig struct {
 	Token        string `validate:"required"`
 	UserName     string `validate:"required"`

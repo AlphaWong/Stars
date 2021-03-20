@@ -16,6 +16,8 @@ import (
 )
 
 const (
+	// GithubURI store the base uri
+	// "https://api.github.com/users/alphawong/starred"
 	GithubURI = "https://api.github.com/users/%s/starred"
 
 	Others       = "Others"
